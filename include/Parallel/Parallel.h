@@ -14,19 +14,37 @@ namespace Parallel {
 
 template<int numThreads = 4>
 struct ParallelCount {
-
+protected:
+	//deque of tasks
 	std::deque<std::function<void()>> tasks;
+	
+	//vector of worker threads
 	std::vector<std::thread> workers;
-	std::vector<char> needToUnlockDone;	//flag whether each thread needs to unlock their doneMutex if it finds an empty queue -- set by singleton before populating tasks, cleared by each thread. access protected by taskMutex.
-	std::vector<std::mutex> doneMutexes;	//one per thread ... ?  semaphore instead?
-	std::mutex tasksMutex;	//lock/unlock surrounding access of the 'tasks' deque
-	std::mutex doneMutex;	//singleton acquires when filling task queue & blocks on.  last thread releases when emptying the task queue.
-	std::mutex shutdownMutex;	//singleton acquires upon start - before thread creation - and releases upon exit.  threads acquire & release to know when to stop.
+	
+	//one per thread ... ?  semaphore instead?
+	std::vector<std::mutex> doneMutexes;	
+	
+	//flag whether each thread needs to unlock their doneMutex if it finds an empty queue.
+	//set by singleton before populating tasks, cleared by each thread once an empty queue is found.
+	//access is protected by taskMutex.
+	std::vector<char> needToUnlockDone;	
+	
+	//lock/unlock surrounding access of the 'tasks' deque 
+	// and surrounding access of 'needToUnlock'
+	std::mutex tasksMutex;	
 
+	//singleton acquires when filling task queue & blocks on.  
+	//last thread releases when emptying the task queue.
+	std::mutex doneMutex;	
+	
+	//singleton acquires upon start - before thread creation - and releases upon exit.  
+	//threads acquire & release to know when to stop.
+	std::mutex shutdownMutex;	
+public:
 	ParallelCount() 
 	: workers(numThreads)
-	, needToUnlockDone(numThreads)
 	, doneMutexes(numThreads)
+	, needToUnlockDone(numThreads)
 	{
 		shutdownMutex.lock();
 		for (int i = 0; i < numThreads; ++i) {
@@ -79,17 +97,27 @@ struct ParallelCount {
 
 	template<typename Iterator, typename Callback>
 	void foreach(Iterator begin, Iterator end, Callback callback) {
-		int totalRange = end - begin;
-		std::thread threads[numThreads];
-		for (int i = 0; i < numThreads; ++i) {
-			int beginIndex = i * totalRange / numThreads;
-			int endIndex = (i + 1) * totalRange / numThreads;
-			threads[i] = std::thread([&,beginIndex,endIndex]() {
-				std::for_each(begin + beginIndex, begin + endIndex, callback);
-			});
+		//spawn
+		{
+			//prep
+			std::lock_guard<std::mutex> taskLock(tasksMutex);		//acquire task mutex
+			for (char &flag : needToUnlockDone) { flag = true; }	//clear all thread done flags
+		
+			//add threads
+			int totalRange = end - begin;
+			for (int i = 0; i < numThreads; ++i) {
+				int beginIndex = i * totalRange / numThreads;
+				int endIndex = (i + 1) * totalRange / numThreads;
+			
+				tasks.push_back([=]() {
+					std::for_each(begin + beginIndex, begin + endIndex, callback);
+				});
+			}
 		}
-		for (int i = 0; i < numThreads; ++i) {
-			threads[i].join();
+
+		//join
+		for (int i = 0; i < doneMutexes.size(); ++i) { 
+			doneMutexes[i].lock();
 		}
 	};
 
@@ -110,21 +138,35 @@ struct ParallelCount {
 		Result initialValue = Result(),
 		Combiner combiner = [&](Result a, Result b) -> Result { return a + b; })
 	{
-		int totalRange = end - begin;
-		std::thread threads[numThreads];
 		Result results[numThreads];
-		for (int i = 0; i < numThreads; ++i) {
-			int beginIndex = i * totalRange / numThreads;
-			int endIndex = (i + 1) * totalRange / numThreads;
-			threads[i] = std::thread([&,beginIndex,endIndex,i]() {
-				results[i] = initialValue;
-				std::for_each(begin + beginIndex, begin + endIndex, [&](typename std::iterator_traits<Iterator >::value_type &value) {
-					results[i] = combiner(results[i], callback(value));
+		
+		//spawn
+		{
+			std::lock_guard<std::mutex> taskLock(tasksMutex);		//acquire task mutex
+			for (char &flag : needToUnlockDone) { flag = true; }	//clear all thread done flags
+		
+			int totalRange = end - begin;
+			for (int i = 0; i < numThreads; ++i) {
+				int beginIndex = i * totalRange / numThreads;
+				int endIndex = (i + 1) * totalRange / numThreads;
+				tasks.push_back([&,beginIndex,endIndex,i]() {
+					results[i] = initialValue;
+					std::for_each(begin + beginIndex, begin + endIndex, [&](
+						typename std::iterator_traits<Iterator>::value_type &value) 
+					{
+						results[i] = combiner(results[i], callback(value));
+					});
 				});
-			});
+			}
 		}
+
+		//join
+		for (int i = 0; i < doneMutexes.size(); ++i) {
+			doneMutexes[i].lock();
+		}
+
+		//combine result
 		for (int i = 0; i < numThreads; ++i) {
-			threads[i].join();
 			initialValue = combiner(initialValue, results[i]);
 		}
 		
