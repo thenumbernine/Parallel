@@ -1,5 +1,5 @@
-DIST_FILENAME=libParallel.dylib
-DIST_TYPE=dylib
+DIST_FILENAME=Parallel
+DIST_TYPE=lib
 
 include ../GLApp/Makefile.mk
 

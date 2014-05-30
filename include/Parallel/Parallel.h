@@ -2,6 +2,7 @@
 
 #include "Common/Singleton.h"
 
+#include <iostream>
 #include <thread>
 #include <functional>
 #include <algorithm>
@@ -16,17 +17,24 @@ struct ParallelCount {
 
 	std::deque<std::function<void()>> tasks;
 	std::vector<std::thread> workers;
+	std::vector<char> needToUnlockDone;	//flag whether each thread needs to unlock their doneMutex if it finds an empty queue -- set by singleton before populating tasks, cleared by each thread. access protected by taskMutex.
+	std::vector<std::mutex> doneMutexes;	//one per thread ... ?  semaphore instead?
 	std::mutex tasksMutex;	//lock/unlock surrounding access of the 'tasks' deque
 	std::mutex doneMutex;	//singleton acquires when filling task queue & blocks on.  last thread releases when emptying the task queue.
 	std::mutex shutdownMutex;	//singleton acquires upon start - before thread creation - and releases upon exit.  threads acquire & release to know when to stop.
 
 	ParallelCount() 
 	: workers(numThreads)
+	, needToUnlockDone(numThreads)
+	, doneMutexes(numThreads)
 	{
 		shutdownMutex.lock();
-		doneMutex.lock();
 		for (int i = 0; i < numThreads; ++i) {
-			workers[i] = std::thread([&](){
+			doneMutexes[i].lock();
+			needToUnlockDone[i] = false;
+		}
+		for (int i = 0; i < numThreads; ++i) {
+			workers[i] = std::thread([&,i](){
 				while (true) {
 					//upon 'done' signal, break
 					if (shutdownMutex.try_lock()) {
@@ -42,19 +50,20 @@ struct ParallelCount {
 						if (!tasks.empty()) {
 							next = tasks.front();
 							tasks.pop_front();
-							//if we got the last one then say so
-							if (tasks.empty()) {
-								gotEmpty = true;
-							}
+						}
+						//if we got the last one then say so
+						if (tasks.empty() && needToUnlockDone[i]) {
+							needToUnlockDone[i] = false;
+							gotEmpty = true;
 						}
 					}
 					if (next) {
 						next();
-						if (gotEmpty) {
-							//BUG: the last thread can still call this before another thread finishes its work
-							// so this technically isn't fired when the queue is done...
-							doneMutex.unlock();
-						}
+					}
+					if (gotEmpty) {
+						//BUG: the last thread can still call this before another thread finishes its work
+						// so this technically isn't fired when the queue is done...
+						doneMutexes[i].unlock();
 					}
 				}
 			});
