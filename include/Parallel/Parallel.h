@@ -168,6 +168,6 @@ public:
 
 typedef ParallelCount<4> Parallel;
 
-extern Singleton<Parallel> parallel;
+extern ::Common::Singleton<Parallel> parallel;
 
 };

@@ -2,7 +2,7 @@
 
 namespace Parallel {
 
-Singleton<Parallel> parallel;
+::Common::Singleton<Parallel> parallel;
 
 };
 
