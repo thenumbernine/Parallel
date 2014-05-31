@@ -1,0 +1,5 @@
+asynchronous for-each and reduce operations using C++11
+
+I started with my own ugly implementation and started stealing bits and pieces from:
+http://progsch.net/wordpress/?p=81
+
