@@ -36,17 +36,15 @@ protected:
 	//singleton acquires when filling task queue & blocks on.  
 	//last thread releases when emptying the task queue.
 	std::mutex doneMutex;	
-	
-	//singleton acquires upon start - before thread creation - and releases upon exit.  
-	//threads acquire & release to know when to stop.
-	std::mutex shutdownMutex;	
+
+	bool done;
 public:
 	ParallelCount() 
 	: workers(numThreads)
 	, doneMutexes(numThreads)
 	, needToUnlockDone(numThreads)
+	, done(false)
 	{
-		shutdownMutex.lock();
 		for (int i = 0; i < numThreads; ++i) {
 			doneMutexes[i].lock();
 			needToUnlockDone[i] = false;
@@ -54,17 +52,13 @@ public:
 		for (int i = 0; i < numThreads; ++i) {
 			workers[i] = std::thread([&,i](){
 				while (true) {
-					//upon 'done' signal, break
-					if (shutdownMutex.try_lock()) {
-						shutdownMutex.unlock();
-						break;
-					}
 
 					//upon 'queue' signal ...
 					std::function<void()> next;
 					bool gotEmpty = false;
 					{
 						std::lock_guard<std::mutex> taskLock(tasksMutex);
+						if (done) return;
 						if (!tasks.empty()) {
 							next = tasks.front();
 							tasks.pop_front();
@@ -79,8 +73,6 @@ public:
 						next();
 					}
 					if (gotEmpty) {
-						//BUG: the last thread can still call this before another thread finishes its work
-						// so this technically isn't fired when the queue is done...
 						doneMutexes[i].unlock();
 					}
 				}
@@ -89,7 +81,7 @@ public:
 	}
 
 	~ParallelCount() {
-		shutdownMutex.unlock();
+		done = true;	//protect this if you want
 		for (std::thread &worker : workers) {
 			worker.join();
 		}

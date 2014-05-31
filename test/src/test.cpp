@@ -3,8 +3,6 @@
 
 int main() {
 
-#if 0
-	//run 10 iterations
 	for (int iter = 0; iter < 100; ++iter) {
 		std::vector<int> v;
 		for (int i = 0; i < 100; ++i) {
@@ -16,7 +14,6 @@ int main() {
 	
 		std::cout << " DONE!!!" << std::endl;
 	}
-#endif
 
 	std::cout << std::endl;
 
