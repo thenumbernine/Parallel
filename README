@@ -5,5 +5,4 @@ I then moved it into here, made it a singleton to let it persist and give it a t
 Then I started stealing bits and pieces from:
 http://progsch.net/wordpress/?p=81
 
-currently depends on GLApp solely for the Makefile.mk
-... some day I'll put that and the include/Common folder in a project of its own so things don't have to build against OpenGL and SDL if they don't need to
+build system depends on my Common project
