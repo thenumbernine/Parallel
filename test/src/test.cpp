@@ -27,10 +27,7 @@ int main() {
 		long result = Parallel::parallel->reduce(
 			v.begin(), 
 			v.end(), 
-			[&](long &i) -> long
-			{
-				return i * i; 
-			},
+			[&](long& i) -> long { return i * i; },
 			0
 		);
 		long verify = n * (n + 1) * (2 * n + 1) / 6;

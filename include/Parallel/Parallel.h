@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <thread>
+#include <mutex>
 #include <functional>
 #include <algorithm>
 #include <vector>
@@ -29,7 +30,7 @@ protected:
 	//access is protected by taskMutex.
 	std::vector<char> needToUnlockDone;	
 	
-	//lock/unlock surrounding access of the 'tasks' deque 
+	//lock/unlock surrounding access of the 'tasks' deque
 	// and surrounding access of 'needToUnlock'
 	std::mutex tasksMutex;	
 
@@ -108,7 +109,7 @@ public:
 		}
 
 		//join
-		for (int i = 0; i < doneMutexes.size(); ++i) { 
+		for (int i = 0; i < (int)doneMutexes.size(); ++i) { 
 			doneMutexes[i].lock();
 		}
 	};
@@ -128,7 +129,7 @@ public:
 		Iterator end, 
 		Callback callback,
 		Result initialValue = Result(),
-		Combiner combiner = [&](Result a, Result b) -> Result { return a + b; })
+		Combiner combiner = std::plus<Result>())
 	{
 		Result results[numThreads];
 		
@@ -153,7 +154,7 @@ public:
 		}
 
 		//join
-		for (int i = 0; i < doneMutexes.size(); ++i) {
+		for (int i = 0; i < (int)doneMutexes.size(); ++i) {
 			doneMutexes[i].lock();
 		}
 
@@ -171,3 +172,4 @@ typedef ParallelCount<4> Parallel;
 extern ::Common::Singleton<Parallel> parallel;
 
 };
+
