@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Common/Singleton.h"
-
 #include <iostream>
 #include <thread>
 #include <mutex>
