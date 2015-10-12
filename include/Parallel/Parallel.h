@@ -170,7 +170,5 @@ public:
 	}
 };
 
-extern ::Common::Singleton<Parallel> parallel;
-
 };
 
