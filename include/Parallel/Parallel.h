@@ -13,9 +13,11 @@
 
 namespace Parallel {
 
-template<int numThreads = 4>
-struct ParallelCount {
+struct Parallel {
 protected:
+	//how many threads to divide ourselves among
+	int numThreads;
+	
 	//deque of tasks
 	std::deque<std::function<void()>> tasks;
 	
@@ -40,8 +42,9 @@ protected:
 
 	bool done;
 public:
-	ParallelCount() 
-	: workers(numThreads)
+	Parallel(int numThreads_ = 4)
+	: numThreads(numThreads_)
+	, workers(numThreads)
 	, doneMutexes(numThreads)
 	, needToUnlockDone(numThreads)
 	, done(false)
@@ -81,7 +84,7 @@ public:
 		}
 	}
 
-	~ParallelCount() {
+	~Parallel() {
 		done = true;	//protect this if you want
 		for (std::thread &worker : workers) {
 			worker.join();
@@ -131,7 +134,7 @@ public:
 		Result initialValue = Result(),
 		Combiner combiner = std::plus<Result>())
 	{
-		Result results[numThreads];
+		std::vector<Result> results(numThreads);
 		
 		//spawn
 		{
@@ -166,8 +169,6 @@ public:
 		return initialValue;
 	}
 };
-
-typedef ParallelCount<4> Parallel;
 
 extern ::Common::Singleton<Parallel> parallel;
 
