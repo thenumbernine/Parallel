@@ -102,7 +102,7 @@ public:
 			for (int i = 0; i < numThreads; ++i) {
 				int beginIndex = i * totalRange / numThreads;
 				int endIndex = (i + 1) * totalRange / numThreads;
-			
+		
 				tasks.push_back([=]() {
 					std::for_each(begin + beginIndex, begin + endIndex, callback);
 				});
