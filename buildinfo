@@ -1,0 +1,5 @@
+distName='Parallel'
+distType='inc'
+function depend(cwd)
+	pthread = true
+end
