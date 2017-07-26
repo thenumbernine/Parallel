@@ -1,5 +1,6 @@
 #include "Parallel/Parallel.h"
 #include <vector>
+#include <cmath>
 
 //this is here and in EinsteinFIeldEquationSolution
 //maybe put it in Common?
@@ -51,7 +52,7 @@ int main() {
 
 	//performance tests
 	{
-		for (int n = 1; n <= 8; ++n) {
+		for (int n = 1; n <= 16; ++n) {
 			double bestTime = std::numeric_limits<double>::infinity();
 			for (int tries = 0; tries < 1000; ++tries) {
 				Parallel::Parallel parallel(n);
