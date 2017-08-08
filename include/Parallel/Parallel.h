@@ -14,7 +14,7 @@ namespace Parallel {
 struct Parallel {
 protected:
 	//how many threads to divide ourselves among
-	int numThreads;
+	size_t numThreads;
 	
 	//deque of tasks
 	std::deque<std::function<void()>> tasks;
@@ -40,18 +40,18 @@ protected:
 
 	bool done;
 public:
-	Parallel(int numThreads_ = 4)
+	Parallel(size_t numThreads_ = 4)
 	: numThreads(numThreads_)
 	, workers(numThreads)
 	, doneMutexes(numThreads)
 	, needToUnlockDone(numThreads)
 	, done(false)
 	{
-		for (int i = 0; i < numThreads; ++i) {
+		for (size_t i = 0; i < numThreads; ++i) {
 			doneMutexes[i].lock();
 			needToUnlockDone[i] = false;
 		}
-		for (int i = 0; i < numThreads; ++i) {
+		for (size_t i = 0; i < numThreads; ++i) {
 			workers[i] = std::thread([&,i](){
 				while (true) {
 
@@ -98,11 +98,11 @@ public:
 			for (char &flag : needToUnlockDone) { flag = true; }	//clear all thread done flags
 		
 			//add threads
-			int totalRange = end - begin;
-			for (int i = 0; i < numThreads; ++i) {
-				int beginIndex = i * totalRange / numThreads;
-				int endIndex = (i + 1) * totalRange / numThreads;
-		
+			size_t totalRange = end - begin;
+			for (size_t i = 0; i < numThreads; ++i) {
+				size_t beginIndex = i * totalRange / numThreads;
+				size_t endIndex = (i + 1) * totalRange / numThreads;
+//std::cout << "thread " << i << " running from " << beginIndex << " to " << endIndex << std::endl;		
 				tasks.push_back([=]() {
 					std::for_each(begin + beginIndex, begin + endIndex, callback);
 				});
@@ -110,7 +110,7 @@ public:
 		}
 
 		//join
-		for (int i = 0; i < (int)doneMutexes.size(); ++i) { 
+		for (size_t i = 0; i < doneMutexes.size(); ++i) { 
 			doneMutexes[i].lock();
 		}
 	};
@@ -139,10 +139,10 @@ public:
 			std::lock_guard<std::mutex> taskLock(tasksMutex);		//acquire task mutex
 			for (char &flag : needToUnlockDone) { flag = true; }	//clear all thread done flags
 		
-			int totalRange = end - begin;
-			for (int i = 0; i < numThreads; ++i) {
-				int beginIndex = i * totalRange / numThreads;
-				int endIndex = (i + 1) * totalRange / numThreads;
+			size_t totalRange = end - begin;
+			for (size_t i = 0; i < numThreads; ++i) {
+				size_t beginIndex = i * totalRange / numThreads;
+				size_t endIndex = (i + 1) * totalRange / numThreads;
 				tasks.push_back([&,beginIndex,endIndex,i]() {
 					results[i] = initialValue;
 					std::for_each(begin + beginIndex, begin + endIndex, [&](
@@ -155,12 +155,12 @@ public:
 		}
 
 		//join
-		for (int i = 0; i < (int)doneMutexes.size(); ++i) {
+		for (size_t i = 0; i < doneMutexes.size(); ++i) {
 			doneMutexes[i].lock();
 		}
 
 		//combine result
-		for (int i = 0; i < numThreads; ++i) {
+		for (size_t i = 0; i < numThreads; ++i) {
 			initialValue = combiner(initialValue, results[i]);
 		}
 		
