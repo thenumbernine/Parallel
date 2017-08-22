@@ -8,6 +8,7 @@
 #include <vector>
 #include <deque>
 #include <list>
+#include "Common/semaphore"
 
 namespace Parallel {
 
@@ -23,7 +24,7 @@ protected:
 	std::vector<std::thread> workers;
 	
 	//one per thread ... ?  semaphore instead?
-	std::vector<std::mutex> doneMutexes;	
+	std::vector<Common::semaphore> doneSempahores;
 	
 	//flag whether each thread needs to unlock their doneMutex if it finds an empty queue.
 	//set by singleton before populating tasks, cleared by each thread once an empty queue is found.
@@ -32,7 +33,7 @@ protected:
 	
 	//lock/unlock surrounding access of the 'tasks' deque
 	// and surrounding access of 'needToUnlock'
-	std::mutex tasksMutex;	
+	std::mutex tasksMutex;
 
 	//singleton acquires when filling task queue & blocks on.  
 	//last thread releases when emptying the task queue.
@@ -43,12 +44,11 @@ public:
 	Parallel(size_t numThreads_ = 4)
 	: numThreads(numThreads_)
 	, workers(numThreads)
-	, doneMutexes(numThreads)
+	, doneSempahores(numThreads)
 	, needToUnlockDone(numThreads)
 	, done(false)
 	{
 		for (size_t i = 0; i < numThreads; ++i) {
-			doneMutexes[i].lock();
 			needToUnlockDone[i] = false;
 		}
 		for (size_t i = 0; i < numThreads; ++i) {
@@ -75,7 +75,7 @@ public:
 						next();
 					}
 					if (gotEmpty) {
-						doneMutexes[i].unlock();
+						doneSempahores[i].notify();
 					}
 				}
 			});
@@ -109,9 +109,9 @@ public:
 			}
 		}
 
-		//join
-		for (size_t i = 0; i < doneMutexes.size(); ++i) { 
-			doneMutexes[i].lock();
+		//wait for the threads to finish
+		for (size_t i = 0; i < doneSempahores.size(); ++i) {
+			doneSempahores[i].wait();
 		}
 	};
 
@@ -155,8 +155,8 @@ public:
 		}
 
 		//join
-		for (size_t i = 0; i < doneMutexes.size(); ++i) {
-			doneMutexes[i].lock();
+		for (size_t i = 0; i < doneSempahores.size(); ++i) {
+			doneSempahores[i].wait();
 		}
 
 		//combine result

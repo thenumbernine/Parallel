@@ -1,3 +1,4 @@
 distName='Parallel'
 distType='inc'
 pthread = true
+depends:insert'../Common'
