@@ -41,7 +41,7 @@ protected:
 
 	bool done;
 public:
-	Parallel(size_t numThreads_ = 4)
+	Parallel(size_t numThreads_ = std::thread::hardware_concurrency())
 	: numThreads(numThreads_)
 	, workers(numThreads)
 	, doneSempahores(numThreads)

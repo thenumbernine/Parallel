@@ -16,7 +16,7 @@ int main() {
 
 	//validity tests
 	{
-		Parallel::Parallel parallel(8);
+		Parallel::Parallel parallel;
 
 		for (int iter = 0; iter < 100; ++iter) {
 			std::vector<int> v;
@@ -52,7 +52,7 @@ int main() {
 
 	//performance tests
 	{
-		for (int n = 1; n <= 16; ++n) {
+		for (int n = 1; n <= std::thread::hardware_concurrency(); ++n) {
 			double bestTime = std::numeric_limits<double>::infinity();
 			for (int tries = 0; tries < 1000; ++tries) {
 				Parallel::Parallel parallel(n);
