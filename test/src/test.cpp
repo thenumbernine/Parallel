@@ -52,7 +52,7 @@ int main() {
 
 	//performance tests
 	{
-		for (int n = 1; n <= std::thread::hardware_concurrency(); ++n) {
+		for (size_t n = 1; n <= std::thread::hardware_concurrency(); ++n) {
 			double bestTime = std::numeric_limits<double>::infinity();
 			for (int tries = 0; tries < 1000; ++tries) {
 				Parallel::Parallel parallel(n);
