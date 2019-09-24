@@ -166,6 +166,8 @@ public:
 		
 		return initialValue;
 	}
+
+	size_t getNumThreads() const { return numThreads; }
 };
 
 }
