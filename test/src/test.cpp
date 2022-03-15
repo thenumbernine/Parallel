@@ -110,7 +110,7 @@ int main() {
 		}
 	
 		// std::async thread pool code
-		for (size_t n = 1; n <= std::thread::hardware_concurrency(); ++n) {
+		for (size_t numCores = 1; numCores <= std::thread::hardware_concurrency(); ++numCores) {
 			
 			double minTime = std::numeric_limits<double>::infinity();
 			double maxTime = -std::numeric_limits<double>::infinity();
@@ -126,9 +126,9 @@ int main() {
 					auto begin = v.begin();
 					auto end = v.end();
 					size_t size = end - begin;
-					std::vector<std::future<bool>> handles(n);
-					for (size_t i = 0; i < n; ++i) {
-						handles[i] = std::async(
+					std::vector<std::future<bool>> handles(numCores);
+					for (size_t coreIndex = 0; coreIndex < numCores; ++coreIndex) {
+						handles[coreIndex] = std::async(
 							std::launch::async,
 							[](auto subbegin, auto subend) -> bool {
 								
@@ -142,8 +142,8 @@ int main() {
 								
 								return true;
 							}, 
-							begin + i * size / n, 
-							begin + (i+1) * size / n
+							begin + coreIndex * size / numCores, 		//subbegin
+							begin + (coreIndex+1) * size / numCores	//subend
 						);
 					}
 
@@ -157,7 +157,7 @@ int main() {
 				avgTime += dt;
 			}
 			avgTime /= (double)maxtries;
-			std::cout << "std::async_" << n << "\t" << minTime << "\t" << avgTime << "\t" << maxTime << std::endl;
+			std::cout << "std::async_" << numCores << "\t" << minTime << "\t" << avgTime << "\t" << maxTime << std::endl;
 		}
 	}
 }
